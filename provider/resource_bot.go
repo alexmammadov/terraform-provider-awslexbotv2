@@ -29,7 +29,7 @@ func resourceBot() *schema.Resource {
 func resourceBotCreate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	// Warning or errors can be collected in a slice type
 	var diags diag.Diagnostics
-	connectSvc := meta.(Client).LexBotV2Client
+	svc := meta.(Client).LexBotV2Client
 
 	params := &lexmodelsv2.CreateBotInput{
 		BotName:                 aws.String(d.Get("name").(string)),
@@ -37,7 +37,7 @@ func resourceBotCreate(ctx context.Context, d *schema.ResourceData, meta interfa
 		IdleSessionTTLInSeconds: aws.Int64(d.Get("idle_session_ttl").(int64)),
 	}
 
-	resp, err := connectSvc.CreateBot(params)
+	resp, err := svc.CreateBot(params)
 	if err != nil {
 		return diag.FromErr(err)
 	}
@@ -54,14 +54,14 @@ func resourceBotCreate(ctx context.Context, d *schema.ResourceData, meta interfa
 func resourceBotRead(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	// Warning or errors can be collected in a slice type
 	var diags diag.Diagnostics
-	// connectSvc := meta.(Client).LexBotV2Client
+	// svc := meta.(Client).LexBotV2Client
 
 	// instanceID := d.Get("instance_id").(string)
 
 	// params := &connect.DescribeBotInput{
 	// 	BotId: aws.String(instanceID),
 	// }
-	// resp, err := connectSvc.DescribeBot(params)
+	// resp, err := svc.DescribeBot(params)
 	// if err != nil {
 	// 	return diag.FromErr(err)
 	// }
@@ -79,7 +79,7 @@ func resourceBotRead(ctx context.Context, d *schema.ResourceData, meta interface
 func resourceBotUpdate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	// Warning or errors can be collected in a slice type
 	var diags diag.Diagnostics
-	// connectSvc := meta.(Client).LexBotV2Client
+	// svc := meta.(Client).LexBotV2Client
 
 	// instanceID := aws.String(d.Id())
 
@@ -89,7 +89,7 @@ func resourceBotUpdate(ctx context.Context, d *schema.ResourceData, meta interfa
 	// 		AttributeType: aws.String("INBOUND_CALLS"),
 	// 		Value:         aws.String(strconv.FormatBool(d.Get("inbound_calls_enabled").(bool))),
 	// 	}
-	// 	_, err := connectSvc.UpdateBotAttribute(params)
+	// 	_, err := svc.UpdateBotAttribute(params)
 	// 	if err != nil {
 	// 		return diag.FromErr(err)
 	// 	}
@@ -100,7 +100,7 @@ func resourceBotUpdate(ctx context.Context, d *schema.ResourceData, meta interfa
 	// 		AttributeType: aws.String("OUTBOUND_CALLS"),
 	// 		Value:         aws.String(strconv.FormatBool(d.Get("outbound_calls_enabled").(bool))),
 	// 	}
-	// 	_, err := connectSvc.UpdateBotAttribute(params)
+	// 	_, err := svc.UpdateBotAttribute(params)
 	// 	if err != nil {
 	// 		return diag.FromErr(err)
 	// 	}
@@ -112,13 +112,13 @@ func resourceBotUpdate(ctx context.Context, d *schema.ResourceData, meta interfa
 func resourceBotDelete(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	// Warning or errors can be collected in a slice type
 	var diags diag.Diagnostics
-	// connectSvc := meta.(Client).LexBotV2Client
+	// svc := meta.(Client).LexBotV2Client
 
 	// params := &connect.DeleteBotInput{
 	// 	BotId: aws.String(d.Id()),
 	// }
 
-	// _, err := connectSvc.DeleteBot(params)
+	// _, err := svc.DeleteBot(params)
 	// if err != nil {
 	// 	return diag.FromErr(err)
 	// }
