@@ -34,7 +34,11 @@ func resourceBotCreate(ctx context.Context, d *schema.ResourceData, meta interfa
 	params := &lexmodelsv2.CreateBotInput{
 		BotName:                 aws.String(d.Get("name").(string)),
 		Description:             aws.String(d.Get("description").(string)),
-		IdleSessionTTLInSeconds: aws.Int64(d.Get("idle_session_ttl").(int64)),
+		IdleSessionTTLInSeconds: aws.Int64(int64(d.Get("idle_session_ttl").(int))),
+		DataPrivacy: &lexmodelsv2.DataPrivacy{
+			ChildDirected: aws.Bool(false),
+		},
+		RoleArn: aws.String("arn:aws:iam::021721647551:role/service-role/test-lex-role-2te64zgs"),
 	}
 
 	resp, err := svc.CreateBot(params)
@@ -46,7 +50,7 @@ func resourceBotCreate(ctx context.Context, d *schema.ResourceData, meta interfa
 	// d.Set("bot_id", aws.StringValue(resp.BotId))
 	// d.Set("arn", aws.StringValue(resp.Arn))
 
-	time.Sleep(3 * time.Minute) // wait 3m for connect instance creation
+	time.Sleep(10 * time.Second)
 
 	return diags
 }
@@ -54,24 +58,22 @@ func resourceBotCreate(ctx context.Context, d *schema.ResourceData, meta interfa
 func resourceBotRead(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	// Warning or errors can be collected in a slice type
 	var diags diag.Diagnostics
-	// svc := meta.(Client).LexBotV2Client
+	svc := meta.(Client).LexBotV2Client
 
-	// instanceID := d.Get("instance_id").(string)
+	id := d.Id()
 
-	// params := &connect.DescribeBotInput{
-	// 	BotId: aws.String(instanceID),
-	// }
-	// resp, err := svc.DescribeBot(params)
-	// if err != nil {
-	// 	return diag.FromErr(err)
-	// }
+	params := &lexmodelsv2.DescribeBotInput{
+		BotId: aws.String(id),
+	}
+	resp, err := svc.DescribeBot(params)
+	if err != nil {
+		return diag.FromErr(err)
+	}
 
-	// d.SetId(instanceID)
-	// d.Set("arn", aws.StringValue(resp.Bot.Arn))
-	// d.Set("instance_alias", aws.StringValue(resp.Bot.BotAlias))
-	// d.Set("identity_management_type", aws.StringValue(resp.Bot.IdentityManagementType))
-	// d.Set("inbound_calls_enabled", aws.BoolValue(resp.Bot.InboundCallsEnabled))
-	// d.Set("outbound_calls_enabled", aws.BoolValue(resp.Bot.OutboundCallsEnabled))
+	d.SetId(id)
+	d.Set("name", aws.StringValue(resp.BotName))
+	d.Set("description", aws.StringValue(resp.Description))
+	d.Set("idle_session_ttl", int(aws.Int64Value(resp.IdleSessionTTLInSeconds)))
 
 	return diags
 }
@@ -79,32 +81,24 @@ func resourceBotRead(ctx context.Context, d *schema.ResourceData, meta interface
 func resourceBotUpdate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	// Warning or errors can be collected in a slice type
 	var diags diag.Diagnostics
-	// svc := meta.(Client).LexBotV2Client
+	svc := meta.(Client).LexBotV2Client
 
-	// instanceID := aws.String(d.Id())
+	id := aws.String(d.Id())
 
-	// if d.HasChange("inbound_calls_enabled") {
-	// 	params := &connect.UpdateBotAttributeInput{
-	// 		BotId:         instanceID,
-	// 		AttributeType: aws.String("INBOUND_CALLS"),
-	// 		Value:         aws.String(strconv.FormatBool(d.Get("inbound_calls_enabled").(bool))),
-	// 	}
-	// 	_, err := svc.UpdateBotAttribute(params)
-	// 	if err != nil {
-	// 		return diag.FromErr(err)
-	// 	}
-	// }
-	// if d.HasChange("outbound_calls_enabled") {
-	// 	params := &connect.UpdateBotAttributeInput{
-	// 		BotId:         instanceID,
-	// 		AttributeType: aws.String("OUTBOUND_CALLS"),
-	// 		Value:         aws.String(strconv.FormatBool(d.Get("outbound_calls_enabled").(bool))),
-	// 	}
-	// 	_, err := svc.UpdateBotAttribute(params)
-	// 	if err != nil {
-	// 		return diag.FromErr(err)
-	// 	}
-	// }
+	params := &lexmodelsv2.UpdateBotInput{
+		BotId:                   id,
+		BotName:                 aws.String(d.Get("name").(string)),
+		Description:             aws.String(d.Get("description").(string)),
+		IdleSessionTTLInSeconds: aws.Int64(int64(d.Get("idle_session_ttl").(int))),
+		DataPrivacy: &lexmodelsv2.DataPrivacy{
+			ChildDirected: aws.Bool(false),
+		},
+		RoleArn: aws.String("arn:aws:iam::021721647551:role/service-role/test-lex-role-2te64zgs"),
+	}
+	_, err := svc.UpdateBot(params)
+	if err != nil {
+		return diag.FromErr(err)
+	}
 
 	return diags
 }
@@ -112,20 +106,23 @@ func resourceBotUpdate(ctx context.Context, d *schema.ResourceData, meta interfa
 func resourceBotDelete(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
 	// Warning or errors can be collected in a slice type
 	var diags diag.Diagnostics
-	// svc := meta.(Client).LexBotV2Client
+	svc := meta.(Client).LexBotV2Client
 
-	// params := &connect.DeleteBotInput{
-	// 	BotId: aws.String(d.Id()),
-	// }
+	params := &lexmodelsv2.DeleteBotInput{
+		BotId:                  aws.String(d.Id()),
+		SkipResourceInUseCheck: aws.Bool(true),
+	}
 
-	// _, err := svc.DeleteBot(params)
-	// if err != nil {
-	// 	return diag.FromErr(err)
-	// }
+	_, err := svc.DeleteBot(params)
+	if err != nil {
+		return diag.FromErr(err)
+	}
 
-	// // d.SetId("") is automatically called assuming delete returns no errors, but
-	// // it is added here for explicitness.
-	// d.SetId("")
+	// d.SetId("") is automatically called assuming delete returns no errors, but
+	// it is added here for explicitness.
+	d.SetId("")
+
+	time.Sleep(10 * time.Second)
 
 	return diags
 }

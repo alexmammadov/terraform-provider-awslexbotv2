@@ -13,7 +13,7 @@ func Provider() *schema.Provider {
 	return &schema.Provider{
 		Schema: map[string]*schema.Schema{},
 		ResourcesMap: map[string]*schema.Resource{
-			"awslexbotv2_instance": resourceBot(),
+			"awslexbotv2_bot": resourceBot(),
 			// "awslexbotv2_instance_lex_bot":      resourceBotLexBot(),
 			// "awslexbotv2_instance_contact_flow": resourceBotContactFlow(),
 		},
