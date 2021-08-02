@@ -1,0 +1,202 @@
+package provider
+
+import (
+	"context"
+	"fmt"
+	"log"
+	"net/http"
+	"os"
+	"strconv"
+
+	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/service/lexmodelsv2"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+)
+
+func resourceUploadUrl() *schema.Resource {
+	return &schema.Resource{
+		CreateContext: resourceUploadUrlCreate,
+		ReadContext:   resourceUploadUrlRead,
+		UpdateContext: resourceUploadUrlUpdate,
+		DeleteContext: resourceUploadUrlDelete,
+
+		Schema: map[string]*schema.Schema{
+			"file_path":        {Type: schema.TypeString, Required: true},
+			"bot_name":         {Type: schema.TypeString, Required: true},
+			"idle_session_ttl": {Type: schema.TypeInt, Required: true},
+			"role_arn":         {Type: schema.TypeString, Required: true},
+			"etag":             {Type: schema.TypeString, Required: true},
+			"import_id":        {Type: schema.TypeString, Computed: true, Optional: true},
+			"upload_url":       {Type: schema.TypeString, Computed: true, Optional: true},
+		},
+	}
+}
+
+func resourceUploadUrlCreate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
+	// Warning or errors can be collected in a slice type
+	var diags diag.Diagnostics
+	svc := meta.(Client).LexBotV2Client
+
+	urlResp, err := svc.CreateUploadUrl(&lexmodelsv2.CreateUploadUrlInput{})
+	if err != nil {
+		return diag.FromErr(err)
+	}
+
+	d.SetId(aws.StringValue(urlResp.ImportId))
+	d.Set("import_id", aws.StringValue(urlResp.ImportId))
+	d.Set("upload_url", aws.StringValue(urlResp.UploadUrl))
+
+	// time.Sleep(10 * time.Second)
+
+	err = uploadFile(aws.StringValue(urlResp.UploadUrl), d.Get("file_path").(string))
+	if err != nil {
+		return diag.FromErr(err)
+	}
+
+	_, err = svc.StartImport(&lexmodelsv2.StartImportInput{
+		ImportId:      urlResp.ImportId,
+		MergeStrategy: aws.String(lexmodelsv2.MergeStrategyOverwrite),
+		ResourceSpecification: &lexmodelsv2.ImportResourceSpecification{
+			BotImportSpecification: &lexmodelsv2.BotImportSpecification{
+				BotName:                 aws.String(d.Get("bot_name").(string)),
+				DataPrivacy:             &lexmodelsv2.DataPrivacy{ChildDirected: aws.Bool(false)},
+				RoleArn:                 aws.String(d.Get("role_arn").(string)),
+				IdleSessionTTLInSeconds: aws.Int64(int64(d.Get("idle_session_ttl").(int))),
+			},
+		},
+	})
+	if err != nil {
+		return diag.FromErr(err)
+	}
+
+	return diags
+}
+
+func uploadFile(serverURL, filename string) error {
+	// var r io.ReadCloser
+	f, err := os.Open(filename)
+	if err != nil {
+		return fmt.Errorf("failed to open upload file %s, %v", filename, err)
+	}
+
+	// Get the size of the file so that the constraint of Content-Length
+	// can be included with the presigned URL. This can be used by the
+	// server or client to ensure the content uploaded is of a certain size.
+	//
+	// These constraints can further be expanded to include things like
+	// Content-Type. Additionally constraints such as X-Amz-Content-Sha256
+	// header set restricting the content of the file to only the content
+	// the client initially made the request with. This prevents the object
+	// from being overwritten or used to upload other unintended content.
+	stat, err := f.Stat()
+	if err != nil {
+		return fmt.Errorf("failed to stat file, %s, %v", filename, err)
+	}
+	defer f.Close()
+
+	req, err := http.NewRequest("PUT", serverURL, f)
+	if err != nil {
+		return fmt.Errorf("failed to build presigned request, %v", err)
+	}
+
+	req.ContentLength = stat.Size()
+	req.Header.Add("Content-Length", strconv.Itoa(int(req.ContentLength)))
+
+	// Upload the file contents to S3.
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return fmt.Errorf("failed to do PUT request, %v", err)
+	}
+
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("failed to put S3 object, %d:%s", resp.StatusCode, resp.Status)
+	}
+
+	log.Printf("S3STATUS: %d, %s\n", resp.StatusCode, resp.Status)
+
+	return nil
+}
+
+func resourceUploadUrlRead(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
+	// Warning or errors can be collected in a slice type
+	var diags diag.Diagnostics
+	// svc := meta.(Client).LexBotV2Client
+
+	// urlResp, err := svc.CreateUploadUrl(&lexmodelsv2.CreateUploadUrlInput{})
+	// if err != nil {
+	// 	return diag.FromErr(err)
+	// }
+
+	// d.Set("import_id", d.Get("import_id"))
+	// d.Set("upload_url", d.Get("upload_url"))
+
+	// time.Sleep(10 * time.Second)
+
+	return diags
+}
+
+func resourceUploadUrlUpdate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
+	var diags diag.Diagnostics
+	svc := meta.(Client).LexBotV2Client
+
+	urlResp, err := svc.CreateUploadUrl(&lexmodelsv2.CreateUploadUrlInput{})
+	if err != nil {
+		return diag.FromErr(err)
+	}
+
+	d.SetId(aws.StringValue(urlResp.ImportId))
+	d.Set("import_id", aws.StringValue(urlResp.ImportId))
+	d.Set("upload_url", aws.StringValue(urlResp.UploadUrl))
+
+	// time.Sleep(10 * time.Second)
+
+	err = uploadFile(aws.StringValue(urlResp.UploadUrl), d.Get("file_path").(string))
+	if err != nil {
+		return diag.FromErr(err)
+	}
+
+	_, err = svc.StartImport(&lexmodelsv2.StartImportInput{
+		ImportId:      urlResp.ImportId,
+		MergeStrategy: aws.String(lexmodelsv2.MergeStrategyOverwrite),
+		ResourceSpecification: &lexmodelsv2.ImportResourceSpecification{
+			BotImportSpecification: &lexmodelsv2.BotImportSpecification{
+				BotName:                 aws.String(d.Get("bot_name").(string)),
+				DataPrivacy:             &lexmodelsv2.DataPrivacy{ChildDirected: aws.Bool(false)},
+				RoleArn:                 aws.String(d.Get("role_arn").(string)),
+				IdleSessionTTLInSeconds: aws.Int64(int64(d.Get("idle_session_ttl").(int))),
+			},
+		},
+	})
+	if err != nil {
+		return diag.FromErr(err)
+	}
+
+	return diags
+}
+
+func resourceUploadUrlDelete(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
+	// Warning or errors can be collected in a slice type
+	var diags diag.Diagnostics
+	// svc := meta.(Client).LexBotV2Client
+
+	// params := &lexmodelsv2.DeleteUploadUrlInput{
+	// 	UploadUrlId:            aws.String(d.Id()),
+	// 	SkipResourceInUseCheck: aws.Bool(true),
+	// }
+
+	// _, err := svc.DeleteUploadUrl(params)
+	// if err != nil {
+	// 	return diag.FromErr(err)
+	// }
+
+	// // d.SetId("") is automatically called assuming delete returns no errors, but
+	// // it is added here for explicitness.
+	d.SetId("")
+
+	// time.Sleep(10 * time.Second)
+
+	return diags
+}

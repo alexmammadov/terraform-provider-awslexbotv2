@@ -2,6 +2,7 @@ package provider
 
 import (
 	"context"
+	"log"
 	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
@@ -20,6 +21,7 @@ func resourceBot() *schema.Resource {
 		Schema: map[string]*schema.Schema{
 			"name":             {Type: schema.TypeString, Required: true},
 			"description":      {Type: schema.TypeString, Required: true},
+			"role_arn":         {Type: schema.TypeString, Required: true},
 			"idle_session_ttl": {Type: schema.TypeInt, Required: true},
 			"id":               {Type: schema.TypeString, Computed: true, Optional: true},
 		},
@@ -31,14 +33,19 @@ func resourceBotCreate(ctx context.Context, d *schema.ResourceData, meta interfa
 	var diags diag.Diagnostics
 	svc := meta.(Client).LexBotV2Client
 
+	urlResp, err := svc.CreateUploadUrl(&lexmodelsv2.CreateUploadUrlInput{})
+	if err != nil {
+		return diag.FromErr(err)
+	}
+	log.Println("IMPORT_ID " + aws.StringValue(urlResp.ImportId))
+	log.Println(aws.StringValue(urlResp.UploadUrl))
+
 	params := &lexmodelsv2.CreateBotInput{
 		BotName:                 aws.String(d.Get("name").(string)),
 		Description:             aws.String(d.Get("description").(string)),
 		IdleSessionTTLInSeconds: aws.Int64(int64(d.Get("idle_session_ttl").(int))),
-		DataPrivacy: &lexmodelsv2.DataPrivacy{
-			ChildDirected: aws.Bool(false),
-		},
-		RoleArn: aws.String("arn:aws:iam::021721647551:role/service-role/test-lex-role-2te64zgs"),
+		DataPrivacy:             &lexmodelsv2.DataPrivacy{ChildDirected: aws.Bool(false)},
+		RoleArn:                 aws.String(d.Get("role_arn").(string)),
 	}
 
 	resp, err := svc.CreateBot(params)
@@ -90,10 +97,8 @@ func resourceBotUpdate(ctx context.Context, d *schema.ResourceData, meta interfa
 		BotName:                 aws.String(d.Get("name").(string)),
 		Description:             aws.String(d.Get("description").(string)),
 		IdleSessionTTLInSeconds: aws.Int64(int64(d.Get("idle_session_ttl").(int))),
-		DataPrivacy: &lexmodelsv2.DataPrivacy{
-			ChildDirected: aws.Bool(false),
-		},
-		RoleArn: aws.String("arn:aws:iam::021721647551:role/service-role/test-lex-role-2te64zgs"),
+		DataPrivacy:             &lexmodelsv2.DataPrivacy{ChildDirected: aws.Bool(false)},
+		RoleArn:                 aws.String(d.Get("role_arn").(string)),
 	}
 	_, err := svc.UpdateBot(params)
 	if err != nil {
