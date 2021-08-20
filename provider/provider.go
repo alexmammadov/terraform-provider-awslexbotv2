@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/aws/aws-sdk-go/service/lexmodelsv2"
+	"github.com/aws/aws-sdk-go/service/sts"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 )
@@ -13,8 +14,8 @@ func Provider() *schema.Provider {
 	return &schema.Provider{
 		Schema: map[string]*schema.Schema{},
 		ResourcesMap: map[string]*schema.Resource{
-			"awslexbotv2_bot":        resourceBot(),
-			"awslexbotv2_uploadurl":  resourceUploadUrl(),
+			"awslexbotv2_bot":       resourceBot(),
+			"awslexbotv2_uploadurl": resourceUploadUrl(),
 		},
 		DataSourcesMap: map[string]*schema.Resource{
 			// "awslexbotv2_instance": dataSourceBot(),
@@ -25,6 +26,7 @@ func Provider() *schema.Provider {
 
 // Client -
 type Client struct {
+	STSClient      *sts.STS
 	LexBotV2Client *lexmodelsv2.LexModelsV2
 }
 
@@ -34,6 +36,7 @@ func providerConfigure(ctx context.Context, d *schema.ResourceData) (interface{}
 
 	c := Client{
 		LexBotV2Client: lexModelsV2Service(),
+		STSClient:      stsService(),
 	}
 
 	return c, diags

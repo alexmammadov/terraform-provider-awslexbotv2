@@ -2,6 +2,7 @@ package provider
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log"
 	"net/http"
@@ -10,6 +11,7 @@ import (
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/lexmodelsv2"
+	"github.com/aws/aws-sdk-go/service/sts"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 )
@@ -29,6 +31,7 @@ func resourceUploadUrl() *schema.Resource {
 			"etag":             {Type: schema.TypeString, Required: true},
 			"import_id":        {Type: schema.TypeString, Computed: true, Optional: true},
 			"upload_url":       {Type: schema.TypeString, Computed: true, Optional: true},
+			"bot_alias_arn":    {Type: schema.TypeString, Computed: true, Optional: true},
 		},
 	}
 }
@@ -69,6 +72,41 @@ func resourceUploadUrlCreate(ctx context.Context, d *schema.ResourceData, meta i
 	if err != nil {
 		return diag.FromErr(err)
 	}
+
+	respDescr, err := svc.DescribeImport(&lexmodelsv2.DescribeImportInput{
+		ImportId: urlResp.ImportId,
+	})
+	if err != nil {
+		return diag.FromErr(err)
+	}
+	botId := respDescr.ImportedResourceId
+
+	respAliases, err := svc.ListBotAliases(&lexmodelsv2.ListBotAliasesInput{
+		BotId: botId,
+	})
+	if err != nil {
+		return diag.FromErr(err)
+	}
+	if len(respAliases.BotAliasSummaries) == 0 {
+		return diag.FromErr(errors.New("no aliases for the bot"))
+	}
+	aliasId := respAliases.BotAliasSummaries[0].BotAliasId
+	region := svc.Config.Region
+
+	stsSvc := meta.(Client).STSClient
+	reqAcc, respAcc := stsSvc.GetCallerIdentityRequest(&sts.GetCallerIdentityInput{})
+	err = reqAcc.Send()
+	if err != nil {
+		return diag.FromErr(err)
+	}
+
+	aliasArn := fmt.Sprintf("arn:aws:lex:%s:%s:bot-alias/%s/%s",
+		aws.StringValue(region),
+		aws.StringValue(respAcc.Account),
+		aws.StringValue(botId),
+		aws.StringValue(aliasId))
+
+	d.Set("bot_alias_arn", aliasArn)
 
 	return diags
 }
@@ -173,6 +211,41 @@ func resourceUploadUrlUpdate(ctx context.Context, d *schema.ResourceData, meta i
 	if err != nil {
 		return diag.FromErr(err)
 	}
+
+	respDescr, err := svc.DescribeImport(&lexmodelsv2.DescribeImportInput{
+		ImportId: urlResp.ImportId,
+	})
+	if err != nil {
+		return diag.FromErr(err)
+	}
+	botId := respDescr.ImportedResourceId
+
+	respAliases, err := svc.ListBotAliases(&lexmodelsv2.ListBotAliasesInput{
+		BotId: botId,
+	})
+	if err != nil {
+		return diag.FromErr(err)
+	}
+	if len(respAliases.BotAliasSummaries) == 0 {
+		return diag.FromErr(errors.New("no aliases for the bot"))
+	}
+	aliasId := respAliases.BotAliasSummaries[0].BotAliasId
+	region := svc.Config.Region
+
+	stsSvc := meta.(Client).STSClient
+	reqAcc, respAcc := stsSvc.GetCallerIdentityRequest(&sts.GetCallerIdentityInput{})
+	err = reqAcc.Send()
+	if err != nil {
+		return diag.FromErr(err)
+	}
+
+	aliasArn := fmt.Sprintf("arn:aws:lex:%s:%s:bot-alias/%s/%s",
+		aws.StringValue(region),
+		aws.StringValue(respAcc.Account),
+		aws.StringValue(botId),
+		aws.StringValue(aliasId))
+
+	d.Set("bot_alias_arn", aliasArn)
 
 	return diags
 }
