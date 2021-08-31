@@ -1,7 +1,7 @@
 package provider
 
 import (
-	"fmt"
+	"log"
 	"os"
 
 	"github.com/aws/aws-sdk-go/aws"
@@ -26,17 +26,17 @@ func stsService() *sts.STS {
 	}))
 	svc := sts.New(sess)
 
-	fmt.Println("starting to call getcalleridentity")
+	log.Println("starting to call getcalleridentity")
 
 	reqAcc, respAcc := svc.GetCallerIdentityRequest(&sts.GetCallerIdentityInput{})
 	err := reqAcc.Send()
 	if err != nil {
-		fmt.Println("getcalleridentity error")
-		fmt.Println(err)
+		log.Println("getcalleridentity error")
+		log.Println(err)
 	}
 
-	fmt.Println("getcalleridentity success")
-	fmt.Println(respAcc.Account)
+	log.Println("getcalleridentity success")
+	log.Println(respAcc.Account)
 
 	return svc
 }
