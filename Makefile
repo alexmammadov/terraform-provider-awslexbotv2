@@ -3,7 +3,7 @@ HOSTNAME=alexmammadov
 NAMESPACE=aws
 NAME=awslexbotv2
 BINARY=terraform-provider-${NAME}
-VERSION=0.2.7
+VERSION=0.2.8
 OS_ARCH=darwin_amd64
 
 default: install

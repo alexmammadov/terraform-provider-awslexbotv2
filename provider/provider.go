@@ -2,6 +2,7 @@ package provider
 
 import (
 	"context"
+	"log"
 
 	"github.com/aws/aws-sdk-go/service/lexmodelsv2"
 	"github.com/aws/aws-sdk-go/service/sts"
@@ -33,7 +34,7 @@ type Client struct {
 func providerConfigure(ctx context.Context, d *schema.ResourceData) (interface{}, diag.Diagnostics) {
 	// Warning or errors can be collected in a slice type
 	var diags diag.Diagnostics
-
+	log.Println("[WARN] === lexbotv2 provider configuree")
 	c := Client{
 		LexBotV2Client: lexModelsV2Service(),
 		STSClient:      stsService(),

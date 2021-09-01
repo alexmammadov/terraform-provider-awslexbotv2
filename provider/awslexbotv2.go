@@ -20,23 +20,24 @@ func lexModelsV2Service() *lexmodelsv2.LexModelsV2 {
 }
 
 func stsService() *sts.STS {
+	log.Println("[WARN] === sts session init")
 	sess := session.Must(session.NewSessionWithOptions(session.Options{
 		Config:            aws.Config{Region: aws.String(os.Getenv("AWS_REGION"))},
 		SharedConfigState: session.SharedConfigEnable,
 	}))
 	svc := sts.New(sess)
 
-	log.Println("starting to call getcalleridentity")
+	log.Println("[WARN] === starting to call getcalleridentity")
 
 	reqAcc, respAcc := svc.GetCallerIdentityRequest(&sts.GetCallerIdentityInput{})
 	err := reqAcc.Send()
 	if err != nil {
-		log.Println("getcalleridentity error")
-		log.Println(err)
+		log.Println("[WARN] === getcalleridentity error")
+		log.Println("[WARN] === error %s\n", err)
 	}
 
-	log.Println("getcalleridentity success")
-	log.Println(respAcc.Account)
+	log.Println("[WARN] === getcalleridentity success")
+	log.Printf("[WARN] === accountno %s\n", respAcc.Account)
 
 	return svc
 }
