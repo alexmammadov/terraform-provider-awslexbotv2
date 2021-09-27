@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"strconv"
+	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/lexmodelsv2"
@@ -40,31 +41,31 @@ func resourceUploadUrlCreate(ctx context.Context, d *schema.ResourceData, meta i
 	// Warning or errors can be collected in a slice type
 	var diags diag.Diagnostics
 	svc := meta.(Client).LexBotV2Client
-	log.Println("[WARN] === calling createuploadurl")
+	log.Println("[DEBUG] calling createuploadurl")
 
 	urlResp, err := svc.CreateUploadUrl(&lexmodelsv2.CreateUploadUrlInput{})
 	if err != nil {
-		log.Println("[WARN] === calling createuploadurl error")
+		log.Println("[DEBUG] calling createuploadurl error")
 
 		return diag.FromErr(err)
 	}
-	log.Println("[WARN] === calling createuploadurl success")
+	log.Println("[DEBUG] calling createuploadurl success")
 
 	d.SetId(aws.StringValue(urlResp.ImportId))
 	d.Set("import_id", aws.StringValue(urlResp.ImportId))
 	d.Set("upload_url", aws.StringValue(urlResp.UploadUrl))
 
 	// time.Sleep(10 * time.Second)
-	log.Println("[WARN] === calling uploadfile")
+	log.Println("[DEBUG] calling uploadfile")
 
 	err = uploadFile(aws.StringValue(urlResp.UploadUrl), d.Get("file_path").(string))
 	if err != nil {
-		log.Println("[WARN] === calling uploadfile error")
+		log.Println("[DEBUG] calling uploadfile error")
 
 		return diag.FromErr(err)
 	}
-	log.Println("[WARN] === calling uploadfile success")
-	log.Println("[WARN] === calling start import")
+	log.Println("[DEBUG] calling uploadfile success")
+	log.Println("[DEBUG] calling start import")
 
 	_, err = svc.StartImport(&lexmodelsv2.StartImportInput{
 		ImportId:      urlResp.ImportId,
@@ -79,55 +80,56 @@ func resourceUploadUrlCreate(ctx context.Context, d *schema.ResourceData, meta i
 		},
 	})
 	if err != nil {
-		log.Println("[WARN] === calling start import error")
+		log.Println("[DEBUG] calling start import error")
 
 		return diag.FromErr(err)
 	}
-	log.Println("[WARN] === calling start import success")
-	log.Println("[WARN] === calling describe import")
+	log.Println("[DEBUG] calling start import success")
+	log.Println("[DEBUG] calling describe import")
 
 	respDescr, err := svc.DescribeImport(&lexmodelsv2.DescribeImportInput{
 		ImportId: urlResp.ImportId,
 	})
 	if err != nil {
-		log.Println("[WARN] === calling describe import error")
+		log.Println("[DEBUG] calling describe import error")
 
 		return diag.FromErr(err)
 	}
-	log.Println("[WARN] === calling describe success")
+	log.Println("[DEBUG] calling describe success")
 
 	botId := respDescr.ImportedResourceId
-	log.Println("[WARN] === calling ListBotAliases")
+	log.Println("[DEBUG] calling ListBotAliases")
+	time.Sleep(10 * time.Second) // wait 10s for completeleting current task
 
 	respAliases, err := svc.ListBotAliases(&lexmodelsv2.ListBotAliasesInput{
 		BotId: botId,
 	})
 	if err != nil {
-		log.Println("[WARN] === calling ListBotAliases error")
+		log.Println("[DEBUG] calling ListBotAliases error")
 
 		return diag.FromErr(err)
 	}
-	log.Println("[WARN] === calling ListBotAliases success")
+	log.Println("[DEBUG] calling ListBotAliases success")
 
 	if len(respAliases.BotAliasSummaries) == 0 {
 		return diag.FromErr(errors.New("no aliases for the bot"))
 	}
-	log.Println("[WARN] === calling ListBotAliases count success")
+	log.Println("[DEBUG] calling ListBotAliases count success")
 
 	aliasId := respAliases.BotAliasSummaries[0].BotAliasId
 	region := svc.Config.Region
 
 	stsSvc := meta.(Client).STSClient
-	log.Println("[WARN] === calling GetCallerIdentityRequest")
+	log.Println("[DEBUG] calling GetCallerIdentityRequest")
 
 	reqAcc, respAcc := stsSvc.GetCallerIdentityRequest(&sts.GetCallerIdentityInput{})
 	err = reqAcc.Send()
 	if err != nil {
-		log.Println("[WARN] === calling GetCallerIdentityRequest error")
+		log.Println("[DEBUG] calling GetCallerIdentityRequest error")
 
 		return diag.FromErr(err)
 	}
-	log.Println("[WARN] === calling GetCallerIdentityRequest success")
+	log.Println("[DEBUG] calling GetCallerIdentityRequest success")
 
 	aliasArn := fmt.Sprintf("arn:aws:lex:%s:%s:bot-alias/%s/%s",
 		aws.StringValue(region),
