@@ -30,6 +30,7 @@ func resourceUploadUrl() *schema.Resource {
 			"idle_session_ttl": {Type: schema.TypeInt, Required: true},
 			"role_arn":         {Type: schema.TypeString, Required: true},
 			"etag":             {Type: schema.TypeString, Required: true},
+			"lambda_arn":       {Type: schema.TypeString, Optional: true},
 			"import_id":        {Type: schema.TypeString, Computed: true, Optional: true},
 			"upload_url":       {Type: schema.TypeString, Computed: true, Optional: true},
 			"bot_alias_arn":    {Type: schema.TypeString, Computed: true, Optional: true},
@@ -138,6 +139,49 @@ func resourceUploadUrlCreate(ctx context.Context, d *schema.ResourceData, meta i
 		aws.StringValue(aliasId))
 
 	d.Set("bot_alias_arn", aliasArn)
+
+	lambdaArn := d.Get("lambda_arn").(string)
+	lambdaVersion := "1.0"
+
+	if len(lambdaArn) > 0 {
+		reqAlias, respAlias := svc.DescribeBotAliasRequest(&lexmodelsv2.DescribeBotAliasInput{
+			BotId:      botId,
+			BotAliasId: aliasId,
+		})
+		err = reqAlias.Send()
+		if err != nil {
+			log.Println("[DEBUG] calling DescribeBotAliasRequest error")
+			return diag.FromErr(err)
+		}
+		log.Println("[DEBUG] calling DescribeBotAliasRequest success")
+
+		respAlias.BotAliasLocaleSettings = make(map[string]*lexmodelsv2.BotAliasLocaleSettings)
+		respAlias.BotAliasLocaleSettings["en_US"] = &lexmodelsv2.BotAliasLocaleSettings{
+			Enabled: aws.Bool(true),
+			CodeHookSpecification: &lexmodelsv2.CodeHookSpecification{
+				LambdaCodeHook: &lexmodelsv2.LambdaCodeHook{
+					LambdaARN:                aws.String(lambdaArn),
+					CodeHookInterfaceVersion: aws.String(lambdaVersion),
+				},
+			},
+		}
+		reqUpdateAlias, respUpdateAlias := svc.UpdateBotAliasRequest((&lexmodelsv2.UpdateBotAliasInput{
+			BotAliasId:                respAlias.BotAliasId,
+			BotAliasLocaleSettings:    respAlias.BotAliasLocaleSettings,
+			BotAliasName:              respAlias.BotAliasName,
+			BotId:                     respAlias.BotId,
+			BotVersion:                respAlias.BotVersion,
+			ConversationLogSettings:   respAlias.ConversationLogSettings,
+			Description:               respAlias.Description,
+			SentimentAnalysisSettings: respAlias.SentimentAnalysisSettings,
+		}))
+		err = reqUpdateAlias.Send()
+		if err != nil {
+			log.Println("[DEBUG] calling UpdateBotAliasRequest error")
+			return diag.FromErr(err)
+		}
+		log.Println("[DEBUG] calling UpdateBotAliasRequest success", respUpdateAlias)
+	}
 
 	return diags
 }
@@ -277,6 +321,49 @@ func resourceUploadUrlUpdate(ctx context.Context, d *schema.ResourceData, meta i
 		aws.StringValue(aliasId))
 
 	d.Set("bot_alias_arn", aliasArn)
+
+	lambdaArn := d.Get("lambda_arn").(string)
+	lambdaVersion := "1.0"
+
+	if len(lambdaArn) > 0 {
+		reqAlias, respAlias := svc.DescribeBotAliasRequest(&lexmodelsv2.DescribeBotAliasInput{
+			BotId:      botId,
+			BotAliasId: aliasId,
+		})
+		err = reqAlias.Send()
+		if err != nil {
+			log.Println("[DEBUG] calling DescribeBotAliasRequest error")
+			return diag.FromErr(err)
+		}
+		log.Println("[DEBUG] calling DescribeBotAliasRequest success")
+
+		respAlias.BotAliasLocaleSettings = make(map[string]*lexmodelsv2.BotAliasLocaleSettings)
+		respAlias.BotAliasLocaleSettings["en_US"] = &lexmodelsv2.BotAliasLocaleSettings{
+			Enabled: aws.Bool(true),
+			CodeHookSpecification: &lexmodelsv2.CodeHookSpecification{
+				LambdaCodeHook: &lexmodelsv2.LambdaCodeHook{
+					LambdaARN:                aws.String(lambdaArn),
+					CodeHookInterfaceVersion: aws.String(lambdaVersion),
+				},
+			},
+		}
+		reqUpdateAlias, respUpdateAlias := svc.UpdateBotAliasRequest((&lexmodelsv2.UpdateBotAliasInput{
+			BotAliasId:                respAlias.BotAliasId,
+			BotAliasLocaleSettings:    respAlias.BotAliasLocaleSettings,
+			BotAliasName:              respAlias.BotAliasName,
+			BotId:                     respAlias.BotId,
+			BotVersion:                respAlias.BotVersion,
+			ConversationLogSettings:   respAlias.ConversationLogSettings,
+			Description:               respAlias.Description,
+			SentimentAnalysisSettings: respAlias.SentimentAnalysisSettings,
+		}))
+		err = reqUpdateAlias.Send()
+		if err != nil {
+			log.Println("[DEBUG] calling UpdateBotAliasRequest error")
+			return diag.FromErr(err)
+		}
+		log.Println("[DEBUG] calling UpdateBotAliasRequest success", respUpdateAlias)
+	}
 
 	return diags
 }
