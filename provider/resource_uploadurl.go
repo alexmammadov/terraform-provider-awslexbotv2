@@ -144,7 +144,7 @@ func resourceUploadUrlCreate(ctx context.Context, d *schema.ResourceData, meta i
 	lambdaVersion := "1.0"
 
 	if len(lambdaArn) > 0 {
-		time.Sleep(5 * time.Second)
+		time.Sleep(30 * time.Second)
 		reqAlias, respAlias := svc.DescribeBotAliasRequest(&lexmodelsv2.DescribeBotAliasInput{
 			BotId:      botId,
 			BotAliasId: aliasId,
@@ -327,7 +327,7 @@ func resourceUploadUrlUpdate(ctx context.Context, d *schema.ResourceData, meta i
 	lambdaVersion := "1.0"
 
 	if len(lambdaArn) > 0 {
-		time.Sleep(5 * time.Second)
+		time.Sleep(30 * time.Second)
 		reqAlias, respAlias := svc.DescribeBotAliasRequest(&lexmodelsv2.DescribeBotAliasInput{
 			BotId:      botId,
 			BotAliasId: aliasId,
